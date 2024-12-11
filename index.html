@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interviews Mywebsite</title>
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/5.6.55/css/materialdesignicons.min.css">
+    <style>
+        #videogrid {
+            width: 100%;
+            display: grid;
+        }
+
+        #videowrap {
+            max-width: 100%;
+        }
+
+        #losvideos {
+            overflow: hidden;
+            position: relative;
+            padding-top: 56.25%;
+            max-width: 900px;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+        }
+
+        #conttu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            transition: all 0.5s ease;
+        }
+
+        #contyo {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 200px;
+            cursor: pointer;
+            transition: all 0.5s ease;
+        }
+
+        .watermark {
+            position: absolute;
+            top: 10px;
+            left: 40px;
+            z-index: 1;
+            opacity: 0.3;
+            transform: scale3d(1.3, 1.3, 1.3);
+        }
+
+        .menu {
+            position: absolute;
+            height: 120px;
+            bottom: -120px;
+            transition: all 0.7s ease;
+            background-color: rgba(0, 0, 0, 0.5);
+            width: 60%;
+            left: 50%;
+            margin-left: -30%;
+            border-radius: 70px 70px 0 0;
+            z-index: 1;
+            display: grid;
+            align-items: center;
+            grid-auto-flow: column;
+            justify-content: center;
+            gap: 30px;
+        }
+
+        #losvideos:hover .menu {
+            bottom: 0px;
+            transition: all 0.7s ease;
+        }
+
+        .menu .icono {
+            width: 80px;
+            height: 80px;
+            background-color: #5d59b5;
+            border-radius: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .menu .icono:hover {
+            background-color: #383485;
+        }
+
+        .menu .icono:active {
+            background-color: #24206d;
+        }
+
+        .menu .icono i {
+            font-size: 50px;
+            color: #fff;
+        }
+
+        .menu #nofull {
+            display: none;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: #fff;
+            color: #900;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 110%;
+            left: 50%;
+            margin-left: -65px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #fff transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+    <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
+</head>
+
+<body>
+    <h2>Interviews Mywebsite</h2>
+
+    <div id="videogrid">
+        <div id="videowrap">
+            <div id="losvideos">
+                <div class="watermark">
+                    <img src="logo.svg" alt="">
+                </div>
+                <div id="conttu">
+                    <video id="video_other" autoplay></video>
+                </div>
+                <div id="contyo">
+                    <video id="my_video" autoplay muted></video>
+                </div>
+                <div class="menu">
+                    <div id="full" class="icono tooltip">
+                        <i class="mdi mdi-fullscreen"></i>
+                        <span class="tooltiptext">Pantalla completa</span>
+                    </div>
+                    <div id="silencio" class="icono tooltip">
+                        <i class="mdi mdi-microphone-off"></i>
+                        <span class="tooltiptext">Silenciar micrófono</span>
+                    </div>
+                    <div id="stopVideo" class="icono tooltip">
+                        <i class="mdi mdi-video-off"></i>
+                        <span class="tooltiptext">Apagar mi cámara</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+    let miStream;
+
+    const socket = io()
+
+    var my_video = document.querySelector("#my_video");
+    if (navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(function (stream) {
+                console.log('Showing my own video')
+                my_video.srcObject = stream;
+                miStream = stream;
+                peer.on('call', call => {
+                    call.answer(stream)
+                    const video_other = document.getElementById('video_other');
+                    call.on('stream', userVideoStream => {
+                        console.log('Showing other users video 1')
+                        video_other.srcObject = userVideoStream;
+                    })
+                })
+                socket.on('user-connected', userID => {
+                    connectToNewUser(userID, stream)
+                });
+            })
+            .catch(function (error) {
+                console.log("Something went wrong!");
+            });
+    }
+
+    var peer = new Peer(undefined, {
+        path: '/peerjs',
+        host: '/',
+        port: '3030'
+    });     
+
+    var room = '12345'; //room name, set by php
+
+    // Send interviews data to server
+    peer.on('open', id => {
+        socket.emit('the-interview', {
+            room: room,
+            id: id
+        });
+    })
+
+    // Function for send our ID and video to the other user
+    const connectToNewUser = (userID, stream) => {
+        const call = peer.call(userID, stream);
+        const video_other = document.getElementById('video_other');
+        call.on('stream', userVideoStream => {
+            console.log('Showing other users video 2')
+            video_other.srcObject = userVideoStream;
+        })
+    }
+
+
+    // other "work in progress" stuff for video call UI 
+
+    // funcion para el silencio
+    function silencio() {
+        const enabled = miStream.getAudioTracks()[0].enabled;
+        if (enabled) {
+            miStream.getAudioTracks()[0].enabled = false;
+            $('#silencio i').removeClass('mdi-microphone-off').addClass('mdi-microphone');
+        } else {
+            $('#silencio i').removeClass('mdi-microphone').addClass('mdi-microphone-off');
+            miStream.getAudioTracks()[0].enabled = true;
+        }
+    }
+    $(document).on('click', '#silencio', function () {
+        silencio();
+    });
+
+    // funcion para apagar cámara
+    function stopVideo() {
+        const enabled = miStream.getVideoTracks()[0].enabled;
+        if (enabled) {
+            miStream.getVideoTracks()[0].enabled = false;
+            $('#stopVideo i').removeClass('mdi-video-off').addClass('mdi-video');
+        } else {
+            $('#stopVideo i').removeClass('mdi-video').addClass('mdi-video-off');
+            miStream.getVideoTracks()[0].enabled = true;
+        }
+    }
+
+    $(document).on('click', '#stopVideo', function () {
+        stopVideo();
+    });
+
+    // Pantalla completa
+    $(document).on('click', '#full', function () {
+        if ($(this).hasClass('activado')) {
+            exitFullScreen();
+        } else {
+            toggleFullScreen();
+        }
+    })
+
+    function toggleFullScreen() {
+        var losvideos = document.getElementById("losvideos");
+        if (losvideos.requestFullscreen)
+            if (document.fullScreenElement) {
+                document.cancelFullScreen();
+            } else {
+                losvideos.requestFullscreen();
+            }
+        else if (losvideos.msRequestFullscreen)
+            if (document.msFullscreenElement) {
+                document.msExitFullscreen();
+            } else {
+                losvideos.msRequestFullscreen();
+            }
+        else if (losvideos.mozRequestFullScreen)
+            if (document.mozFullScreenElement) {
+                document.mozCancelFullScreen();
+            } else {
+                losvideos.mozRequestFullScreen();
+            }
+        else if (losvideos.webkitRequestFullscreen)
+            if (document.webkitFullscreenElement) {
+                document.webkitCancelFullScreen();
+            } else {
+                losvideos.webkitRequestFullscreen();
+            }
+        else {
+            alert("Fullscreen API is not supported");
+        }
+    }
+
+    $('#losvideos').bind('webkitfullscreenchange mozfullscreenchange fullscreenchange', function (e) {
+        var state = document.fullScreen || document.mozFullScreen || document.webkitIsFullScreen;
+        var event = state ? 'FullscreenOn' : 'FullscreenOff';
+
+        $('#full i').removeClass('mdi-fullscreen-exit').addClass('mdi-fullscreen');
+        $('#full').removeClass('activado');
+
+        if (event == "FullscreenOn") {
+            $('#full i').removeClass('mdi-fullscreen').addClass('mdi-fullscreen-exit');
+            $('#full').addClass('activado');
+        }
+    });
+
+    function exitFullScreen() {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        }
+    }
+
+    $(document).on('click', '#contyo', function () {
+        if ($(this).hasClass('big')) {
+            $('#contyo').removeClass('big').attr('style', false)
+            $('#conttu').attr('style', false)
+        } else {
+            $('#conttu').css({ 'width': '250px', 'z-index': '1', 'right': '10px', 'bottom': '10px', 'top': 'unset', 'left': 'unset' })
+            $('#contyo').css({ 'width': '100%', 'z-index': '0', 'right': '0', 'bottom': '-4px' }).addClass('big')
+        }
+    })
+
+</script>
+</body>
+</html>
